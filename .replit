@@ -24,3 +24,9 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[userenv]
+
+[userenv.shared]
+LANGFUSE_PUBLIC_KEY = "pk-lf-b4aed49f-5881-468d-8376-6ddfdc435d85"
+LANGFUSE_BASE_URL = "https://cloud.langfuse.com"
