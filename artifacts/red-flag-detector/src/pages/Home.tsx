@@ -53,7 +53,7 @@ export default function Home() {
           <Shield className="w-8 h-8 text-primary" />
         </div>
         <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground">
-          TrueFlagger
+          VibeProof
         </h1>
         <p className="text-lg text-muted-foreground max-w-xl mx-auto">
           Upload a screenshot or paste a text message to check for signs of manipulation, crossed boundaries, or controlling behavior.
