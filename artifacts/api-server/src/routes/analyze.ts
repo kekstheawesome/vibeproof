@@ -93,12 +93,12 @@ router.post("/analyze", async (req, res) => {
 
   const trace = langfuse.trace({
     name: "vibeproof-analyze",
+    userId: req.isAuthenticated() ? (req.user.email ?? req.user.id) : "anonymous",
     input: {
       inputMode,
       hasContext: !!context,
       textLength: text?.length ?? 0,
       hasImage: !!imageBase64,
-      userId: req.isAuthenticated() ? req.user.id : "anonymous",
     },
     metadata: { app: "vibeproof" },
   });
