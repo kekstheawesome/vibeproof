@@ -104,66 +104,60 @@ router.post("/analyze", async (req, res) => {
   });
 
   try {
-    const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
+    const userContent: Parameters<typeof openai.responses.create>[0]["input"] = [];
 
     if (imageBase64) {
       const imageData = imageBase64.startsWith("data:")
         ? imageBase64
         : `data:image/jpeg;base64,${imageBase64}`;
-      userContent.push({
-        type: "image_url",
-        image_url: { url: imageData },
+      (userContent as Array<unknown>).push({
+        type: "input_image",
+        image_url: imageData,
+        detail: "auto",
       });
-      userContent.push({
-        type: "text",
+      (userContent as Array<unknown>).push({
+        type: "input_text",
         text: "Please analyze this screenshot of a text conversation for red flags.",
       });
     }
 
     if (text) {
-      userContent.push({
-        type: "text",
+      (userContent as Array<unknown>).push({
+        type: "input_text",
         text: `Please analyze this text conversation for red flags:\n\n${text}`,
       });
     }
 
     if (context) {
-      userContent.push({
-        type: "text",
+      (userContent as Array<unknown>).push({
+        type: "input_text",
         text: `Additional context from the user: ${context}`,
       });
     }
 
-    userContent.push({
-      type: "text",
+    (userContent as Array<unknown>).push({
+      type: "input_text",
       text: "Return your analysis as a JSON object following the exact structure specified.",
     });
-
-    const messages = [
-      { role: "system" as const, content: SYSTEM_PROMPT },
-      {
-        role: "user" as const,
-        content: userContent as Parameters<typeof openai.chat.completions.create>[0]["messages"][0]["content"],
-      },
-    ];
 
     const generation = trace.generation({
       name: "red-flag-detection",
       model: MODEL,
-      input: messages,
+      input: userContent,
       modelParameters: {
-        max_completion_tokens: 8192,
+        max_output_tokens: 8192,
         response_format: "json_object",
       },
     });
 
-    let completion: Awaited<ReturnType<typeof openai.chat.completions.create>>;
+    let response: Awaited<ReturnType<typeof openai.responses.create>>;
     try {
-      completion = await openai.chat.completions.create({
+      response = await openai.responses.create({
         model: MODEL,
-        max_completion_tokens: 8192,
-        messages,
-        response_format: { type: "json_object" },
+        instructions: SYSTEM_PROMPT,
+        input: userContent,
+        text: { format: { type: "json_object" } },
+        max_output_tokens: 8192,
       });
     } catch (err) {
       generation.end({ level: "ERROR", statusMessage: String(err) });
@@ -172,14 +166,14 @@ router.post("/analyze", async (req, res) => {
       throw err;
     }
 
-    const rawContent = completion.choices[0]?.message?.content;
+    const rawContent = response.output_text;
 
     generation.end({
       output: rawContent ?? null,
       usage: {
-        promptTokens: completion.usage?.prompt_tokens,
-        completionTokens: completion.usage?.completion_tokens,
-        totalTokens: completion.usage?.total_tokens,
+        promptTokens: response.usage?.input_tokens,
+        completionTokens: response.usage?.output_tokens,
+        totalTokens: (response.usage?.input_tokens ?? 0) + (response.usage?.output_tokens ?? 0),
       },
     });
 
@@ -239,6 +233,7 @@ router.post("/analyze", async (req, res) => {
       const uses = parseInt(req.cookies?.[FREE_USES_COOKIE] ?? "0", 10);
       res.cookie(FREE_USES_COOKIE, String(uses + 1), {
         httpOnly: true,
+        secure: true,
         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
         sameSite: "lax",
       });
