@@ -21,12 +21,35 @@ A web app that analyzes screenshots or pasted text conversations for manipulatio
 - Overall calm explanation
 - Suggested responses (copyable)
 - Asks clarifying questions if more context is needed
+- **Auth**: Replit OIDC login/signup — Log in / Sign up buttons in the top-right nav
+- **Free limit**: 1 free analysis for guests; prompts sign-up on the 2nd attempt (tracked via `vp_uses` httpOnly cookie)
+- **History**: Logged-in users see a collapsible "History" panel showing all past analyses (saved to `analyses` DB table); can re-view any past result
+- **Unlimited**: Authenticated users have no analysis limit; every analysis is saved to history
 
 ### Observability
 - **Langfuse** tracing on every `/api/analyze` call via `artifacts/api-server/src/lib/langfuse.ts`
 - Each request creates a `vibeproof-analyze` trace with a nested `red-flag-detection` generation
 - Traces include: input mode, text length, token usage, severity score, red flag count, severity tags
 - Env vars: `LANGFUSE_SECRET_KEY` (secret), `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_BASE_URL`
+
+## Release Workflow (Staging → Production)
+
+Two-environment setup via GitHub branches:
+
+| Environment | Branch | Where |
+|-------------|--------|--------|
+| **Staging** | `staging` | This Replit workspace (preview URL — private) |
+| **Production** | `master` | Published Replit deployment (`.replit.app` — public) |
+
+### Promotion flow
+
+1. **Develop & test** — work in this Replit workspace; the preview URL is your staging environment
+2. **Push to staging** — push code to the `staging` branch on GitHub
+3. **Open a PR** — `staging` → `master` on GitHub (direct pushes to `master` are protected)
+4. **Review & merge** — once satisfied, merge the PR
+5. **Deploy to production** — click **Publish** in this Replit workspace to deploy `master` to production
+
+`master` branch is protected: no direct pushes, all changes must come via PR from `staging`.
 
 ## Stack
 
