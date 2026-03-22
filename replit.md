@@ -4,6 +4,24 @@
 
 pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
 
+## Red Flag Detector App
+
+A web app that analyzes screenshots or pasted text conversations for manipulation, coercion, dishonesty, aggression, boundary violations, or controlling behavior.
+
+- **Frontend**: `artifacts/red-flag-detector` (React + Vite, at `/`)
+- **Backend**: `artifacts/api-server` (Express 5, at `/api`)
+- **AI**: OpenAI GPT (via Replit AI Integrations) — `gpt-5.2` with vision for image analysis
+- **Key endpoint**: `POST /api/analyze` — accepts `{ imageBase64, text, context }`, returns analysis
+
+### Features
+- Upload a screenshot (drag & drop or click) OR paste text
+- Optional context field for user to describe situation
+- Severity score 0–5 with color-coded badge
+- List of red flags with category, quote, and explanation
+- Overall calm explanation
+- Suggested responses (copyable)
+- Asks clarifying questions if more context is needed
+
 ## Stack
 
 - **Monorepo tool**: pnpm workspaces

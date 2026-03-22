@@ -1,0 +1,10 @@
+packages:
+  "framer-motion": "For smooth, premium animations when revealing analysis results and tab switching"
+  "clsx": "For conditional class name merging"
+  "tailwind-merge": "For merging tailwind classes safely"
+
+images: []
+
+notes:
+  - "Using generated hooks from @workspace/api-client-react"
+  - "Assuming the backend handles base64 image strings in Data URI format (data:image/png;base64,...)"

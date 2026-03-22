@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: analyze
+    description: Red flag detection analysis
 paths:
   /healthz:
     get:
@@ -24,6 +26,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /analyze:
+    post:
+      operationId: analyzeText
+      tags: [analyze]
+      summary: Analyze text or image for red flags
+      description: Analyzes a text message or screenshot for manipulation, coercion, dishonesty, aggression, boundary violations, or controlling behavior
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeRequest"
+      responses:
+        "200":
+          description: Analysis result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +66,77 @@ components:
           type: string
       required:
         - status
-
+    AnalyzeRequest:
+      type: object
+      properties:
+        imageBase64:
+          type: ["string", "null"]
+          description: Base64-encoded image of a screenshot (optional)
+        text:
+          type: ["string", "null"]
+          description: Plain text of a message or conversation (optional)
+        context:
+          type: ["string", "null"]
+          description: Additional context provided by the user about the situation
+      description: At least one of imageBase64 or text must be provided
+    RedFlag:
+      type: object
+      properties:
+        category:
+          type: string
+          description: Category of red flag (e.g. manipulation, coercion, aggression)
+        quote:
+          type: string
+          description: Direct quote or evidence from the text
+        explanation:
+          type: string
+          description: Evidence-based explanation of why this is a red flag
+      required:
+        - category
+        - quote
+        - explanation
+    AnalysisResult:
+      type: object
+      properties:
+        severityScore:
+          type: number
+          description: Severity score from 0 to 5 (0 = no red flags, 5 = extremely concerning)
+        severityLabel:
+          type: string
+          description: Human-readable label for the severity level
+        redFlags:
+          type: array
+          items:
+            $ref: "#/components/schemas/RedFlag"
+          description: List of detected red flags with evidence
+        overallExplanation:
+          type: string
+          description: A calm, clear explanation of the overall situation
+        suggestedResponses:
+          type: array
+          items:
+            type: string
+          description: Suggested ways to respond to the situation
+        needsMoreContext:
+          type: boolean
+          description: Whether more context is needed for accurate analysis
+        contextQuestions:
+          type: array
+          items:
+            type: string
+          description: Questions to ask the user if more context is needed
+      required:
+        - severityScore
+        - severityLabel
+        - redFlags
+        - overallExplanation
+        - suggestedResponses
+        - needsMoreContext
+        - contextQuestions
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error

@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Red Flag Detector"
+version = "1.0.0"
+id = "artifacts/red-flag-detector"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25839
+
+[services.development]
+run = "pnpm --filter @workspace/red-flag-detector run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/red-flag-detector", "run", "build" ]
+publicDir = "artifacts/red-flag-detector/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25839"
+BASE_PATH = "/"

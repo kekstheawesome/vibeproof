@@ -8,3 +8,54 @@
 export interface HealthStatus {
   status: string;
 }
+
+/**
+ * At least one of imageBase64 or text must be provided
+ */
+export interface AnalyzeRequest {
+  /**
+   * Base64-encoded image of a screenshot (optional)
+   * @nullable
+   */
+  imageBase64?: string | null;
+  /**
+   * Plain text of a message or conversation (optional)
+   * @nullable
+   */
+  text?: string | null;
+  /**
+   * Additional context provided by the user about the situation
+   * @nullable
+   */
+  context?: string | null;
+}
+
+export interface RedFlag {
+  /** Category of red flag (e.g. manipulation, coercion, aggression) */
+  category: string;
+  /** Direct quote or evidence from the text */
+  quote: string;
+  /** Evidence-based explanation of why this is a red flag */
+  explanation: string;
+}
+
+export interface AnalysisResult {
+  /** Severity score from 0 to 5 (0 = no red flags, 5 = extremely concerning) */
+  severityScore: number;
+  /** Human-readable label for the severity level */
+  severityLabel: string;
+  /** List of detected red flags with evidence */
+  redFlags: RedFlag[];
+  /** A calm, clear explanation of the overall situation */
+  overallExplanation: string;
+  /** Suggested ways to respond to the situation */
+  suggestedResponses: string[];
+  /** Whether more context is needed for accurate analysis */
+  needsMoreContext: boolean;
+  /** Questions to ask the user if more context is needed */
+  contextQuestions: string[];
+}
+
+export interface ErrorResponse {
+  error: string;
+}

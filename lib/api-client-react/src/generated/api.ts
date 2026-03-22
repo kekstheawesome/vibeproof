@@ -5,18 +5,26 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  AnalysisResult,
+  AnalyzeRequest,
+  ErrorResponse,
+  HealthStatus,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -99,3 +107,90 @@ export function useHealthCheck<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Analyzes a text message or screenshot for manipulation, coercion, dishonesty, aggression, boundary violations, or controlling behavior
+ * @summary Analyze text or image for red flags
+ */
+export const getAnalyzeTextUrl = () => {
+  return `/api/analyze`;
+};
+
+export const analyzeText = async (
+  analyzeRequest: AnalyzeRequest,
+  options?: RequestInit,
+): Promise<AnalysisResult> => {
+  return customFetch<AnalysisResult>(getAnalyzeTextUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(analyzeRequest),
+  });
+};
+
+export const getAnalyzeTextMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof analyzeText>>,
+    TError,
+    { data: BodyType<AnalyzeRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof analyzeText>>,
+  TError,
+  { data: BodyType<AnalyzeRequest> },
+  TContext
+> => {
+  const mutationKey = ["analyzeText"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof analyzeText>>,
+    { data: BodyType<AnalyzeRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return analyzeText(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AnalyzeTextMutationResult = NonNullable<
+  Awaited<ReturnType<typeof analyzeText>>
+>;
+export type AnalyzeTextMutationBody = BodyType<AnalyzeRequest>;
+export type AnalyzeTextMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Analyze text or image for red flags
+ */
+export const useAnalyzeText = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof analyzeText>>,
+    TError,
+    { data: BodyType<AnalyzeRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof analyzeText>>,
+  TError,
+  { data: BodyType<AnalyzeRequest> },
+  TContext
+> => {
+  return useMutation(getAnalyzeTextMutationOptions(options));
+};

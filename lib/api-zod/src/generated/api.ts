@@ -14,3 +14,62 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Analyzes a text message or screenshot for manipulation, coercion, dishonesty, aggression, boundary violations, or controlling behavior
+ * @summary Analyze text or image for red flags
+ */
+export const AnalyzeTextBody = zod
+  .object({
+    imageBase64: zod
+      .string()
+      .nullish()
+      .describe("Base64-encoded image of a screenshot (optional)"),
+    text: zod
+      .string()
+      .nullish()
+      .describe("Plain text of a message or conversation (optional)"),
+    context: zod
+      .string()
+      .nullish()
+      .describe("Additional context provided by the user about the situation"),
+  })
+  .describe("At least one of imageBase64 or text must be provided");
+
+export const AnalyzeTextResponse = zod.object({
+  severityScore: zod
+    .number()
+    .describe(
+      "Severity score from 0 to 5 (0 = no red flags, 5 = extremely concerning)",
+    ),
+  severityLabel: zod
+    .string()
+    .describe("Human-readable label for the severity level"),
+  redFlags: zod
+    .array(
+      zod.object({
+        category: zod
+          .string()
+          .describe(
+            "Category of red flag (e.g. manipulation, coercion, aggression)",
+          ),
+        quote: zod.string().describe("Direct quote or evidence from the text"),
+        explanation: zod
+          .string()
+          .describe("Evidence-based explanation of why this is a red flag"),
+      }),
+    )
+    .describe("List of detected red flags with evidence"),
+  overallExplanation: zod
+    .string()
+    .describe("A calm, clear explanation of the overall situation"),
+  suggestedResponses: zod
+    .array(zod.string())
+    .describe("Suggested ways to respond to the situation"),
+  needsMoreContext: zod
+    .boolean()
+    .describe("Whether more context is needed for accurate analysis"),
+  contextQuestions: zod
+    .array(zod.string())
+    .describe("Questions to ask the user if more context is needed"),
+});
