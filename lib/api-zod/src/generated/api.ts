@@ -73,3 +73,111 @@ export const AnalyzeTextResponse = zod.object({
     .array(zod.string())
     .describe("Questions to ask the user if more context is needed"),
 });
+
+/**
+ * @summary Get the authenticated user's analysis history
+ */
+export const GetAnalysisHistoryResponse = zod.object({
+  analyses: zod.array(
+    zod.object({
+      id: zod.string(),
+      inputMode: zod.enum(["image", "text"]),
+      createdAt: zod.date(),
+      result: zod.object({
+        severityScore: zod
+          .number()
+          .describe(
+            "Severity score from 0 to 5 (0 = no red flags, 5 = extremely concerning)",
+          ),
+        severityLabel: zod
+          .string()
+          .describe("Human-readable label for the severity level"),
+        redFlags: zod
+          .array(
+            zod.object({
+              category: zod
+                .string()
+                .describe(
+                  "Category of red flag (e.g. manipulation, coercion, aggression)",
+                ),
+              quote: zod
+                .string()
+                .describe("Direct quote or evidence from the text"),
+              explanation: zod
+                .string()
+                .describe(
+                  "Evidence-based explanation of why this is a red flag",
+                ),
+            }),
+          )
+          .describe("List of detected red flags with evidence"),
+        overallExplanation: zod
+          .string()
+          .describe("A calm, clear explanation of the overall situation"),
+        suggestedResponses: zod
+          .array(zod.string())
+          .describe("Suggested ways to respond to the situation"),
+        needsMoreContext: zod
+          .boolean()
+          .describe("Whether more context is needed for accurate analysis"),
+        contextQuestions: zod
+          .array(zod.string())
+          .describe("Questions to ask the user if more context is needed"),
+      }),
+    }),
+  ),
+});
+
+/**
+ * @summary Get the currently authenticated user
+ */
+export const GetCurrentAuthUserHeader = zod.object({
+  Authorization: zod
+    .string()
+    .optional()
+    .describe("Opaque session token — `Bearer <sid>`."),
+});
+
+export const GetCurrentAuthUserResponse = zod.object({
+  user: zod.union([
+    zod.object({
+      id: zod.string(),
+      email: zod.string().email().nullable(),
+      firstName: zod.string().nullable(),
+      lastName: zod.string().nullable(),
+      profileImageUrl: zod.string().nullable(),
+    }),
+    zod.null(),
+  ]),
+});
+
+/**
+ * @summary Start the browser OIDC login flow
+ */
+export const BeginBrowserLoginQueryParams = zod.object({
+  returnTo: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "Relative path to redirect to after login (must start with `\/`). Defaults to `\/`.",
+    ),
+});
+
+/**
+ * @summary Complete the browser OIDC login flow
+ */
+export const HandleBrowserLoginCallbackQueryParams = zod.object({
+  code: zod.coerce.string().optional(),
+  state: zod.coerce.string().optional(),
+  iss: zod.coerce.string().url().optional(),
+});
+
+/**
+ * @summary Clear the session and begin OIDC logout
+ */
+export const LogoutBrowserSessionHeader = zod.object({
+  Authorization: zod
+    .string()
+    .optional()
+    .describe("Opaque session token — `Bearer <sid>`."),
+});

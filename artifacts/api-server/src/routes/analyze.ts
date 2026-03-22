@@ -2,10 +2,13 @@ import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { AnalyzeTextBody, AnalyzeTextResponse } from "@workspace/api-zod";
 import { langfuse } from "../lib/langfuse";
+import { db, analysesTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
 const MODEL = "gpt-5.2";
+const FREE_USES_COOKIE = "vp_uses";
+const FREE_LIMIT = 1;
 
 const SYSTEM_PROMPT = `You are a calm, empathetic red-flag detection assistant. Your job is to analyze text messages or conversations for signs of manipulation, coercion, dishonesty, aggression, boundary violations, or controlling behavior.
 
@@ -74,6 +77,18 @@ router.post("/analyze", async (req, res) => {
     return;
   }
 
+  // Enforce free-use limit for unauthenticated users
+  if (!req.isAuthenticated()) {
+    const uses = parseInt(req.cookies?.[FREE_USES_COOKIE] ?? "0", 10);
+    if (uses >= FREE_LIMIT) {
+      res.status(429).json({
+        error: "You've used your free analysis. Sign up to continue.",
+        limitReached: true,
+      });
+      return;
+    }
+  }
+
   const inputMode = imageBase64 ? (text ? "image+text" : "image") : "text";
 
   const trace = langfuse.trace({
@@ -83,6 +98,7 @@ router.post("/analyze", async (req, res) => {
       hasContext: !!context,
       textLength: text?.length ?? 0,
       hasImage: !!imageBase64,
+      userId: req.isAuthenticated() ? req.user.id : "anonymous",
     },
     metadata: { app: "vibeproof" },
   });
@@ -206,6 +222,27 @@ router.post("/analyze", async (req, res) => {
     });
 
     await langfuse.flushAsync();
+
+    // Save to history for authenticated users
+    if (req.isAuthenticated()) {
+      try {
+        await db.insert(analysesTable).values({
+          userId: req.user.id,
+          inputMode: imageBase64 ? "image" : "text",
+          result: validated.data as unknown as Record<string, unknown>,
+        });
+      } catch (saveErr) {
+        req.log.error({ saveErr }, "Failed to save analysis to history");
+      }
+    } else {
+      // Increment free-use cookie
+      const uses = parseInt(req.cookies?.[FREE_USES_COOKIE] ?? "0", 10);
+      res.cookie(FREE_USES_COOKIE, String(uses + 1), {
+        httpOnly: true,
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        sameSite: "lax",
+      });
+    }
 
     res.json(validated.data);
   } catch (err) {

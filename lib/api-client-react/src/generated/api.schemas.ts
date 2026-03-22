@@ -56,6 +56,68 @@ export interface AnalysisResult {
   contextQuestions: string[];
 }
 
+export type AnalysisHistoryItemInputMode =
+  (typeof AnalysisHistoryItemInputMode)[keyof typeof AnalysisHistoryItemInputMode];
+
+export const AnalysisHistoryItemInputMode = {
+  image: "image",
+  text: "text",
+} as const;
+
+export interface AnalysisHistoryItem {
+  id: string;
+  inputMode: AnalysisHistoryItemInputMode;
+  createdAt: string;
+  result: AnalysisResult;
+}
+
+export interface AnalysisHistoryResponse {
+  analyses: AnalysisHistoryItem[];
+}
+
+export interface LimitReachedResponse {
+  error: string;
+  limitReached: boolean;
+}
+
 export interface ErrorResponse {
   error: string;
 }
+
+export interface AuthUser {
+  id: string;
+  /** @nullable */
+  email: string | null;
+  /** @nullable */
+  firstName: string | null;
+  /** @nullable */
+  lastName: string | null;
+  /** @nullable */
+  profileImageUrl: string | null;
+}
+
+export interface AuthUserEnvelope {
+  user: AuthUser | null;
+}
+
+export interface ErrorEnvelope {
+  error: string;
+}
+
+/**
+ * Opaque session token — `Bearer <sid>`.
+ */
+export type AuthorizationSessionHeaderParameter = string;
+
+export type BeginBrowserLoginParams = {
+  /**
+   * Relative path to redirect to after login (must start with `/`). Defaults to `/`.
+   */
+  returnTo?: string;
+};
+
+export type HandleBrowserLoginCallbackParams = {
+  code?: string;
+  state?: string;
+  iss?: string;
+};

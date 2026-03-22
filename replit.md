@@ -21,6 +21,10 @@ A web app that analyzes screenshots or pasted text conversations for manipulatio
 - Overall calm explanation
 - Suggested responses (copyable)
 - Asks clarifying questions if more context is needed
+- **Auth**: Replit OIDC login/signup — Log in / Sign up buttons in the top-right nav
+- **Free limit**: 1 free analysis for guests; prompts sign-up on the 2nd attempt (tracked via `vp_uses` httpOnly cookie)
+- **History**: Logged-in users see a collapsible "History" panel showing all past analyses (saved to `analyses` DB table); can re-view any past result
+- **Unlimited**: Authenticated users have no analysis limit; every analysis is saved to history
 
 ### Observability
 - **Langfuse** tracing on every `/api/analyze` call via `artifacts/api-server/src/lib/langfuse.ts`
