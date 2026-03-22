@@ -1,8 +1,11 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { AnalyzeTextBody, AnalyzeTextResponse } from "@workspace/api-zod";
+import { langfuse } from "../lib/langfuse";
 
 const router: IRouter = Router();
+
+const MODEL = "gpt-5.2";
 
 const SYSTEM_PROMPT = `You are a calm, empathetic red-flag detection assistant. Your job is to analyze text messages or conversations for signs of manipulation, coercion, dishonesty, aggression, boundary violations, or controlling behavior.
 
@@ -71,6 +74,19 @@ router.post("/analyze", async (req, res) => {
     return;
   }
 
+  const inputMode = imageBase64 ? (text ? "image+text" : "image") : "text";
+
+  const trace = langfuse.trace({
+    name: "vibeproof-analyze",
+    input: {
+      inputMode,
+      hasContext: !!context,
+      textLength: text?.length ?? 0,
+      hasImage: !!imageBase64,
+    },
+    metadata: { app: "vibeproof" },
+  });
+
   try {
     const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
 
@@ -107,22 +123,54 @@ router.post("/analyze", async (req, res) => {
       text: "Return your analysis as a JSON object following the exact structure specified.",
     });
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-5.2",
-      max_completion_tokens: 8192,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: userContent as Parameters<typeof openai.chat.completions.create>[0]["messages"][0]["content"],
-        },
-      ],
-      response_format: { type: "json_object" },
+    const messages = [
+      { role: "system" as const, content: SYSTEM_PROMPT },
+      {
+        role: "user" as const,
+        content: userContent as Parameters<typeof openai.chat.completions.create>[0]["messages"][0]["content"],
+      },
+    ];
+
+    const generation = trace.generation({
+      name: "red-flag-detection",
+      model: MODEL,
+      input: messages,
+      modelParameters: {
+        max_completion_tokens: 8192,
+        response_format: "json_object",
+      },
     });
 
+    let completion: Awaited<ReturnType<typeof openai.chat.completions.create>>;
+    try {
+      completion = await openai.chat.completions.create({
+        model: MODEL,
+        max_completion_tokens: 8192,
+        messages,
+        response_format: { type: "json_object" },
+      });
+    } catch (err) {
+      generation.end({ level: "ERROR", statusMessage: String(err) });
+      trace.update({ output: { error: "OpenAI call failed" } });
+      await langfuse.flushAsync();
+      throw err;
+    }
+
     const rawContent = completion.choices[0]?.message?.content;
+
+    generation.end({
+      output: rawContent ?? null,
+      usage: {
+        promptTokens: completion.usage?.prompt_tokens,
+        completionTokens: completion.usage?.completion_tokens,
+        totalTokens: completion.usage?.total_tokens,
+      },
+    });
+
     if (!rawContent) {
       req.log.error("No content in OpenAI response");
+      trace.update({ output: { error: "Empty AI response" } });
+      await langfuse.flushAsync();
       res.status(500).json({ error: "Failed to get analysis from AI" });
       return;
     }
@@ -132,6 +180,8 @@ router.post("/analyze", async (req, res) => {
       parsed = JSON.parse(rawContent);
     } catch {
       req.log.error({ rawContent }, "Failed to parse AI response as JSON");
+      trace.update({ output: { error: "JSON parse failure" } });
+      await langfuse.flushAsync();
       res.status(500).json({ error: "Failed to parse AI response" });
       return;
     }
@@ -139,13 +189,29 @@ router.post("/analyze", async (req, res) => {
     const validated = AnalyzeTextResponse.safeParse(parsed);
     if (!validated.success) {
       req.log.error({ issues: validated.error.issues }, "AI response failed schema validation");
+      trace.update({ output: { error: "Schema validation failure", issues: validated.error.issues } });
+      await langfuse.flushAsync();
       res.status(500).json({ error: "AI response did not match expected format" });
       return;
     }
 
+    trace.update({
+      output: {
+        severityScore: validated.data.severityScore,
+        severityLabel: validated.data.severityLabel,
+        redFlagCount: validated.data.redFlags.length,
+        needsMoreContext: validated.data.needsMoreContext,
+      },
+      tags: [`severity-${validated.data.severityScore}`, `mode-${inputMode}`],
+    });
+
+    await langfuse.flushAsync();
+
     res.json(validated.data);
   } catch (err) {
     req.log.error({ err }, "Error calling OpenAI API");
+    trace.update({ output: { error: String(err) } });
+    await langfuse.flushAsync();
     res.status(500).json({ error: "Failed to analyze text" });
   }
 });

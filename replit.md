@@ -22,6 +22,12 @@ A web app that analyzes screenshots or pasted text conversations for manipulatio
 - Suggested responses (copyable)
 - Asks clarifying questions if more context is needed
 
+### Observability
+- **Langfuse** tracing on every `/api/analyze` call via `artifacts/api-server/src/lib/langfuse.ts`
+- Each request creates a `vibeproof-analyze` trace with a nested `red-flag-detection` generation
+- Traces include: input mode, text length, token usage, severity score, red flag count, severity tags
+- Env vars: `LANGFUSE_SECRET_KEY` (secret), `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_BASE_URL`
+
 ## Stack
 
 - **Monorepo tool**: pnpm workspaces
